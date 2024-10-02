@@ -39,18 +39,29 @@ class RealsenseRos2(Node):
         
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.intrinsic = None
+        self.depth_scale = None
     
     def start(self):
         self.pipeline.start(self.config)
+        self.intrinsic = self.get_color_intrinsics()
+        self.depth_scale = self.get_depth_scale()
+        # Run once to get rid of initial bad sensor frames
+        self.get_and_publish_image(publish=False)
+        self.get_logger.info("Camera initialized.")
+        self.get_logger.info("Depth scale: %f" % self.depth_scale)
     
     def stop(self):
         self.pipeline.stop()
 
-    def get_and_publish_image(self):
+    def get_and_publish_image(self, publish: bool =True):
+        align_to = rs.stream.color
+        align = rs.align(align_to)
         # Wait for a coherent pair of frames: depth and color
         frames = self.pipeline.wait_for_frames()
-        depth_frame = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
+        aligned_frames = align.process(frames)
+        depth_frame = aligned_frames.get_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
         if not depth_frame or not color_frame:
             continue
 
@@ -70,8 +81,9 @@ class RealsenseRos2(Node):
         if depth_colormap_dim != color_colormap_dim:
             resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]), interpolation=cv2.INTER_AREA)
         
-        self.color_publisher.publish(self.br.cv2_to_imgmsg(color_colormap_dim))
-        self.color_publisher.publish(self.br.cv2_to_imgmsg(depth_colormap_dim))
+        if publish:
+            self.color_publisher.publish(self.br.cv2_to_imgmsg(color_colormap_dim))
+            self.color_publisher.publish(self.br.cv2_to_imgmsg(depth_colormap_dim))
 
 
 def main(args=None):
