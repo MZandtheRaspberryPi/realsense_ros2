@@ -4,8 +4,8 @@ import rclpy
 from rclpy.node import Node
 from cv_bridge import CvBridge
 
-from sensor_msgs.msg import Image, PointCloud2, PointField
-import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import Image #, PointCloud2, PointField
+# import sensor_msgs.point_cloud2 as pc2
 from std_msgs.msg import Header
 
 import pyrealsense2 as rs
@@ -22,7 +22,7 @@ class RealsenseRos2(Node):
         self.br = CvBridge()
         self.color_publisher = self.create_publisher(Image, self.color_topic_name , 10)
         self.depth_publisher = self.create_publisher(Image, self.depth_topic_name , 10)
-        self.pc_publisher = self.create_publisher(PointCloud2, self.pointcloud_topic_name , 10)
+        # self.pc_publisher = self.create_publisher(PointCloud2, self.pointcloud_topic_name , 10)
         self.partial_header = Header()
         self.partial_header.frame_id = self.pointcloud_frame
 
@@ -38,7 +38,9 @@ class RealsenseRos2(Node):
     
         found_rgb = False
         for s in self.device.sensors:
-            if s.get_info(rs.camera_info.name) == 'RGB Camera':
+            camera_name = s.get_info(rs.camera_info.name)
+            self.get_logger().info(f"camera name: {camera_name}")
+            if camera_name == 'Stereo Module':
                 found_rgb = True
                 break
         if not found_rgb:
@@ -46,8 +48,8 @@ class RealsenseRos2(Node):
             self.get_logger().error(err_str)
             raise RuntimeError(err_str)
         
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+        self.config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
         self.color_intrinsic = None
         self.depth_scale = None
         self.color_intrinsic = None
