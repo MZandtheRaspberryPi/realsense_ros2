@@ -35,18 +35,13 @@ class RealsenseRos2(Node):
         self.pipeline_profile = self.config.resolve(self.pipeline_wrapper)
         self.device = self.pipeline_profile.get_device()
         self.device_product_line = str(self.device.get_info(rs.camera_info.product_line))
+        print(self.device_product_line)
     
-        found_rgb = False
-        for s in self.device.sensors:
-            camera_name = s.get_info(rs.camera_info.name)
-            self.get_logger().info(f"camera name: {camera_name}")
-            if camera_name == 'Stereo Module':
-                found_rgb = True
-                break
-        if not found_rgb:
-            err_str = "The demo requires Depth camera with Color sensor"
-            self.get_logger().error(err_str)
-            raise RuntimeError(err_str)
+        ctx = rs.context()
+        serials = []
+        devices = ctx.query_devices()
+        for dev in devices:
+            dev.hardware_reset()
         
         self.config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
         self.config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
